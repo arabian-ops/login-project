@@ -1,109 +1,311 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import toast, { Toaster } from "react-hot-toast";
-import Particles from "react-tsparticles";
-import { loadFull } from "tsparticles";
-import { FaStar, FaHeart, FaShoppingCart } from "react-icons/fa";
+import { FaTrash, FaEdit, FaSave, FaTimes, FaCheckCircle } from "react-icons/fa";
+import api from "../api/axios";
 
-const products = [
-  { name: "Aurora Lamp", desc: "Soft ambient lighting for calm vibes.", img: "https://m.media-amazon.com/images/I/71DsoDSaE4L.jpg", price: "$45", badge: "New" },
-  { name: "Zen Chair", desc: "Ergonomic and comfy for long work sessions.", img: "https://dignity.co.ke/wp-content/uploads/2025/02/ZEN-ACCENT-CHAIR-3054-BROWN.jpg", price: "$120", badge: "Hot" },
-  { name: "Notebook", desc: "Premium leather notebook for ideas.", img: "https://m.media-amazon.com/images/I/718vM+75UNL._AC_UF1000,1000_QL80_.jpg", price: "$25", badge: "Sale" },
-  { name: "Headphones", desc: "Noise cancelling for focus and chill.", img: "https://www.cnet.com/a/img/resize/1d9b4699d31b82ea6342e9db0c6971a31a0ea703/hub/2023/10/17/7830396e-9be2-4a2e-800b-699a181a9faf/bose-quietcomfort-ultra-headpones-orange-background.jpg?auto=webp&fit=crop&height=1200&width=1200", price: "$75" },
-  { name: "Coffee Mug", desc: "Keeps your drink warm all day.", img: "https://karacreates.com/wp-content/uploads/2016/09/Coffee-Mug-Herb-Garden-4.jpg", price: "$15" },
-  { name: "Desk Plant", desc: "Green vibes for relaxation.", img: "https://plantsolutions.com/wp-content/uploads/2024/03/desk-plants-clayco-phoenix-az.webp", price: "$30", badge: "New" },
-];
+interface Task {
+  id: number;
+  title: string;
+  status: string;
+  createdAt: string;
+  completedAt?: string | null;
+}
+
+
+const getTimePassed = (dateString: string): string => {
+  const now = new Date();
+  const past = new Date(dateString);
+  const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);
+
+  const units = [
+    { name: 'year', seconds: 31536000 },
+    { name: 'month', seconds: 2592000 },
+    { name: 'day', seconds: 86400 },
+    { name: 'hour', seconds: 3600 },
+    { name: 'minute', seconds: 60 },
+  ];
+
+  for (const unit of units) {
+    const amount = Math.floor(diffInSeconds / unit.seconds);
+    if (amount >= 1) {
+      return `${amount} ${unit.name}${amount > 1 ? 's' : ''} ago`;
+    }
+  }
+
+  return "just now";
+};
+
 
 const Dashboard = () => {
-  const [modalProduct, setModalProduct] = useState(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [newTask, setNewTask] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editText, setEditText] = useState<string>("");
 
-  const particlesInit = async (engine) => { await loadFull(engine); };
+  // Fetch tasks from backend
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await api.get("/tasks", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.data.success) {
+          setTasks(res.data.tasks || []);
+        }
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+      }
+    };
+    fetchTasks();
+  }, []);
 
-  const addToCart = (product) => { toast.success(`${product.name} added to cart!`); };
-  const addToWishlist = (product) => { toast(`${product.name} added to wishlist!`, { icon: "💖" }); };
+  const addTask = useCallback(async (): Promise<void> => {
+    if (!newTask.trim()) {
+      toast.error("Task cannot be empty");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const res = await api.post(
+        "/tasks",
+        { title: newTask },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data.success) {
+        setTasks((prev) => [res.data.task, ...prev]);
+        setNewTask("");
+        toast.success("Task added!");
+      } else {
+        toast.error(res.data.message || "Failed to add task");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Error adding task");
+    } finally {
+      setLoading(false);
+    }
+  }, [newTask]);
+
+  const completeTask = useCallback(async (id: number): Promise<void> => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.patch(
+        `/tasks/${id}/toggle`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data.success) {
+        setTasks((prev) =>
+          prev.map((t) => (t.id === id ? res.data.task : t))
+        );
+        toast.success("Task updated!");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Error updating task");
+    }
+  }, []);
+
+  const deleteTask = useCallback(async (id: number): Promise<void> => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.delete(`/tasks/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.data.success) {
+        setTasks((prev) => prev.filter((t) => t.id !== id));
+        toast("Task deleted", { icon: "🗑️" });
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Error deleting task");
+    }
+  }, []);
+
+  const startEdit = (task: Task): void => {
+    setEditingId(task.id);
+    setEditText(task.title);
+  };
+
+  const saveEdit = useCallback(async (): Promise<void> => {
+    if (!editText.trim()) {
+      toast.error("Task cannot be empty");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await api.patch(
+        `/tasks/${editingId}`,
+        { title: editText },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data.success) {
+        setTasks((prev) =>
+          prev.map((t) => (t.id === editingId ? res.data.task : t))
+        );
+        setEditingId(null);
+        setEditText("");
+        toast.success("Task edited!");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Error editing task");
+    }
+  }, [editingId, editText]);
+
+
+  const sortedTasks = useMemo(() => {
+    return [...tasks].sort((a, b) => {
+      const aCompleted = !!a.completedAt;
+      const bCompleted = !!b.completedAt;
+      if (aCompleted !== bCompleted) {
+        return aCompleted ? 1 : -1;
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [tasks]);
 
   return (
-    <div className="min-h-screen relative text-white overflow-hidden"
+    <div
+      className="min-h-screen relative text-white overflow-hidden"
       style={{
-        backgroundImage: "url('https://w0.peakpx.com/wallpaper/600/891/HD-wallpaper-midnight-calm-stars-dark-peaceful-beautiful-reflections-sky-night.jpg')",
+        backgroundImage:
+          "url('https://w0.peakpx.com/wallpaper/600/891/HD-wallpaper-midnight-calm-stars-dark-peaceful-reflections-sky-night.jpg')",
         backgroundSize: "cover",
         backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
       }}
     >
       <Toaster position="top-right" />
-      <Particles
-        id="tsparticles"
-        init={particlesInit}
-        options={{
-          fullScreen: { enable: false },
-          particles: { number: { value: 60 }, size: { value: { min: 2, max: 4 } }, move: { enable: true, speed: 0.15 }, opacity: { value: 0.15 }, shape: { type: 'circle' }, color: { value: "#ffffff" } },
-        }}
-        className="absolute inset-0 z-0"
-      />
 
-      <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-5xl font-bold text-center my-10 z-10 relative">
-        🌌 Dashboard
+      <motion.h1
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-5xl font-bold text-center my-10 z-10 relative"
+      >
+        My To-Do List
       </motion.h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 p-10 relative z-10">
-        {products.map((p, i) => (
-          <motion.div
-            key={i}
-            whileHover={{ scale: 1.05, boxShadow: "0px 10px 20px rgba(255,255,255,0.2)" }}
-            className="bg-white/10 backdrop-blur-md rounded-3xl p-6 flex flex-col items-center text-center relative cursor-pointer transition"
-            onClick={() => setModalProduct(p)}
-          >
-            {p.badge && (
-              <span className="absolute top-4 left-4 bg-gradient-to-r from-pink-500 to-purple-600 px-3 py-1 rounded-full text-xs font-semibold animate-pulse">{p.badge}</span>
-            )}
-            <div className="relative group w-32 h-32 mb-4">
-              <img src={p.img} alt={p.name} className="w-32 h-32 object-cover rounded-xl" />
-              <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                whileHover={{ opacity: 1, y: -10 }}
-                className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-black/70 text-white text-xs rounded px-2 py-1 pointer-events-none"
-              >
-                Click for more details
-              </motion.div>
-            </div>
-            <h2 className="font-bold text-xl">{p.name}</h2>
-            <p className="text-white/70 mb-2">{p.desc}</p>
-            <div className="flex gap-1 mb-2 justify-center">
-              {[...Array(5)].map((_, j) => <FaStar key={j} className="text-yellow-400" />)}
-            </div>
-            <p className="font-semibold mb-4">{p.price}</p>
-            <div className="flex gap-2">
-              <button onClick={(e) => { e.stopPropagation(); addToCart(p); }} className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-xl flex items-center gap-2 transition relative overflow-hidden">
-                <FaShoppingCart /> Add
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); addToWishlist(p); }} className="bg-pink-600 hover:bg-pink-700 px-4 py-2 rounded-xl flex items-center gap-2">💖 Wishlist</button>
-            </div>
-          </motion.div>
-        ))}
+      
+      <div className="flex justify-center gap-4 mb-10 relative z-10">
+        <input
+          type="text"
+          value={newTask}
+          onChange={(e) => setNewTask(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addTask()}
+          className="px-4 py-2 w-72 rounded-xl bg-white/20 backdrop-blur text-white placeholder-white/60 focus:ring-2 focus:ring-purple-500 transition-all"
+          placeholder="Enter your task..."
+        />
+        <button
+          onClick={addTask}
+          className="bg-purple-600 hover:bg-purple-700 px-5 py-2 rounded-xl transition-colors"
+        >
+          Add Task
+        </button>
       </div>
 
-      {modalProduct && (
-        <motion.div
-          initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }}
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
-          onClick={() => setModalProduct(null)}
-        >
-          <motion.div className="bg-white/10 backdrop-blur-md p-8 rounded-3xl max-w-md text-center" onClick={(e) => e.stopPropagation()}>
-            <img src={modalProduct.img} alt={modalProduct.name} className="w-48 h-48 object-cover rounded-xl mb-4 mx-auto" />
-            <h2 className="text-2xl font-bold mb-2">{modalProduct.name}</h2>
-            <p className="text-white/70 mb-2">{modalProduct.desc}</p>
-            <div className="flex justify-center gap-1 mb-2">
-              {[...Array(5)].map((_, j) => <FaStar key={j} className="text-yellow-400" />)}
+      
+      <div className="flex justify-center p-4 relative z-10">
+        <ul className="w-full max-w-4xl space-y-4">
+          {sortedTasks.map((task: Task) => (
+            <motion.li
+              key={task.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              className={`bg-white/10 backdrop-blur-md rounded-xl p-4 flex items-center justify-between transition-all border-l-4 ${
+                task.completedAt ? "border-green-400 opacity-70" : "border-purple-600"
+              }`}
+            >
+              
+              
+              <div className="flex items-center space-x-3 text-lg">
+                 <button
+                    onClick={() => completeTask(task.id)}
+                    className={`p-2 rounded-full transition-colors ${
+                      task.completedAt ? "text-green-400 hover:text-white" : "text-white/60 hover:text-green-400"
+                    }`}
+                    title={task.completedAt ? "Mark Not Done" : "Mark Done"}
+                >
+                    <FaCheckCircle />
+                </button>
+                
+                {editingId === task.id ? (
+                    <div className="flex space-x-2">
+                        <button
+                            onClick={() => saveEdit()}
+                            className="text-blue-400 hover:text-blue-300 p-2"
+                            title="Save"
+                        >
+                            <FaSave />
+                        </button>
+                        <button
+                            onClick={() => setEditingId(null)}
+                            className="text-gray-400 hover:text-gray-300 p-2"
+                            title="Cancel"
+                        >
+                            <FaTimes />
+                        </button>
+                    </div>
+                ) : (
+                    <div className="flex space-x-2">
+                        <button
+                            onClick={() => startEdit(task)}
+                            className="text-yellow-400 hover:text-yellow-300 p-2"
+                            title="Edit"
+                        >
+                            <FaEdit />
+                        </button>
+                        <button
+                            onClick={() => deleteTask(task.id)}
+                            className="text-red-400 hover:text-red-300 p-2"
+                            title="Delete"
+                        >
+                            <FaTrash />
+                        </button>
+                    </div>
+                )}
+              </div>
+
+              
+              <div className="flex-1 min-w-0 mx-4">
+                {editingId === task.id ? (
+                  <input
+                    type="text"
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                    className="w-full bg-white/20 p-1 rounded text-white"
+                  />
+                ) : (
+                  <p
+                    className={`font-medium text-lg truncate ${
+                      task.completedAt ? "line-through text-white/60" : "text-white"
+                    }`}
+                  >
+                    {task.title}
+                  </p>
+                )}
+              </div>
+              
+             
+              <p className="text-sm text-white/50 w-32 text-right flex-shrink-0">
+                Added {getTimePassed(task.createdAt)}
+              </p>
+            </motion.li>
+          ))}
+          {!tasks.length && (
+            <div className="text-center text-white/50 p-10">
+                No tasks yet! Add one above to get started.
             </div>
-            <p className="font-semibold mb-4">{modalProduct.price}</p>
-            <div className="flex justify-center gap-4">
-              <button onClick={() => addToCart(modalProduct)} className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-xl">Add to Cart</button>
-              <button onClick={() => addToWishlist(modalProduct)} className="bg-pink-600 hover:bg-pink-700 px-4 py-2 rounded-xl">Wishlist</button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
+          )}
+        </ul>
+      </div>
     </div>
   );
 };

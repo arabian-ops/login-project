@@ -6,6 +6,11 @@ import jwt from "jsonwebtoken";
 export const register = async (req: Request, res: Response) => {
   const { email, password, fullname } = req.body;
   try {
+    // Validate input
+    if (!email || !password || !fullname) {
+      return res.status(400).json({ success: false, message: "Email, password, and fullname are required" });
+    }
+
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) return res.status(400).json({ success: false, message: "User already exists" });
 
@@ -20,14 +25,19 @@ export const register = async (req: Request, res: Response) => {
       message: "Registration successful!", 
       user: { id: user.id, email: user.email, fullName: user.fullName } 
     });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Server error", error: err });
+  } catch (err: any) {
+    console.error("Register error:", err);
+    res.status(500).json({ success: false, message: "Server error", error: err.message });
   }
 };
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
   try {
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email and password are required" });
+    }
+
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.status(400).json({ success: false, message: "Invalid credentials" });
 
@@ -43,7 +53,8 @@ export const login = async (req: Request, res: Response) => {
       message: "Login successful!", 
       token 
     });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Server error", error: err });
+  } catch (err: any) {
+    console.error("Login error:", err);
+    res.status(500).json({ success: false, message: "Server error", error: err.message });
   }
 };
