@@ -20,7 +20,6 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 interface Task {
   id: number;
   title: string;
-  status: string;
   createdAt: string;
   completedAt?: string | null;
 }
