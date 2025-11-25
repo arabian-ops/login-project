@@ -15,7 +15,7 @@ model User {
   password  String
   createdAt DateTime @default(now())
 
-  tasks     Task[]   // relation to tasks
+  tasks     Task[]  
 }
 
 model Task {
@@ -28,5 +28,5 @@ model Task {
   userEmail    String
   user         User      @relation(fields: [userEmail], references: [email])
 
-  @@index([userEmail])   // faster filtering by email
+  @@index([userEmail])   
 }
