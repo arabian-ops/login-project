@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import prisma from "../db.ts";
+import prisma from "../db";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 

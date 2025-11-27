@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import prisma from "../db.ts";
+import prisma from "../db";
 
 // Get all tasks for a user
 export const getTasks = async (req: Request & { userId?: number }, res: Response) => {

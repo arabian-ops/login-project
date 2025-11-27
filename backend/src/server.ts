@@ -2,8 +2,9 @@ import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import * as dotenv from "dotenv";
-import authRoutes from "./routes/authRoutes.ts";
-import taskRoutes from "./routes/taskRoutes.ts";
+import authRoutes from "./routes/authRoutes";
+import taskRoutes from "./routes/taskRoutes";
+
 
 dotenv.config();
 
