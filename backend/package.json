@@ -1,35 +1,53 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "src/server.ts",
-  "type": "module",
+  "main": "dist/src/server.js",
   "scripts": {
-    "dev": "ts-node-esm src/server.ts",
-    "start": "ts-node-esm src/server.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon src/server.ts",
+    "build": "tsc",
+    "start": "node dist/src/server.js",
+    "jobs": "ts-node src/jobs/index.ts",
+    "test:emails": "ts-node src/test-emails.ts",
+    "test:mpesa": "ts-node src/test-mpesa-config.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:studio": "prisma studio"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
-    "@prisma/client": "^6.19.0",
-    "@types/body-parser": "^1.19.6",
+    "@prisma/adapter-pg": "^7.0.0",
+    "@prisma/client": "^7.0.0",
+    "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
-    "body-parser": "^2.2.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2"
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.10",
+    "pg": "^8.16.3",
+    "qrcode": "^1.5.4",
+    "redis": "^5.9.0",
+    "socket.io": "^4.8.1",
+    "tsx": "^4.20.6",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
+    "@types/express-rate-limit": "^6.0.2",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.10.1",
-    "prisma": "^6.19.0",
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^7.0.3",
+    "@types/pg": "^8.15.6",
+    "@types/qrcode": "^1.5.6",
+    "nodemon": "^3.1.11",
+    "prisma": "^7.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
 }
-

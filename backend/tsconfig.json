@@ -1,21 +1,15 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "node",
+    "target": "es2020",
+    "module": "commonjs",
+    "rootDir": ".",
+    "outDir": "./dist",
     "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "allowJs": true,
-    "ignoreDeprecations": "6.0"
+    "resolveJsonModule": true
   },
-  "include": ["src"]
+  "include": ["src/**/*", "scripts/**/*"],
+  "exclude": ["node_modules"]
 }
-
-
-
-
